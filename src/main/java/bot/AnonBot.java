@@ -50,15 +50,8 @@ public class AnonBot extends TelegramLongPollingBot {
         }
 
         switch (user.getUserStatus()) {
-
-            case DEFAULT:
-                defaultStatus(update, user);
-                break;
-
-            case ANONYMOUS:
-                anonymousStatus(update, user);
-                break;
-
+            case DEFAULT -> defaultStatus(update, user);
+            case ANONYMOUS -> anonymousStatus(update, user);
         }
 
     }
@@ -73,7 +66,6 @@ public class AnonBot extends TelegramLongPollingBot {
                     user.setUserStatus("ANONYMOUS");
                     dbConnection.changeUserStatus(user);
                     sendAnonMsgMenu(user.getChatId());
-                    //sendMainMenu(user.getChatId());
                     break;
             }
         }
@@ -82,20 +74,15 @@ public class AnonBot extends TelegramLongPollingBot {
             String mode = update.getCallbackQuery().getData();
 
             switch (mode) {
-                case "anonymous":
+                case "anonymous" -> {
                     user.setUserStatus("ANONYMOUS");
                     dbConnection.changeUserStatus(user);
                     sendAnonMsgMenu(user.getChatId());
-                    break;
-
-                case "cancel":
-                    user.setUserStatus("DEFAULT");
-                    dbConnection.changeUserStatus(user);
-                    sendMainMenu(user.getChatId());
-                    break;
-
-
-                case "send":
+                }
+                case "cancel" -> {
+                    //delete msg, or save, but what is the purpose of saving message, that u don`t send?
+                }
+                case "send" -> {
                     String msg = "";
                     if (update.getCallbackQuery().getMessage().hasText()) {
                         msg = update.getCallbackQuery().getMessage().getText();
@@ -108,7 +95,7 @@ public class AnonBot extends TelegramLongPollingBot {
                     }
                     sendMsg(user.getChatId(), "Сообщение отправлено");
                     sendMainMenu(user.getChatId());
-                    break;
+                }
             }
         }
 
@@ -183,14 +170,6 @@ public class AnonBot extends TelegramLongPollingBot {
                 .build());
     }
 
-    private void sendMsg(long chatId, String text) {
-        sendMessage(SendMessage
-                .builder()
-                .chatId(chatId)
-                .text(text)
-                .build());
-    }
-
     private void sendMsgToChannel(String text) {
         String preText = "*Новый вопрос:* " + "\n\n";
         sendMessage(SendMessage
@@ -198,6 +177,14 @@ public class AnonBot extends TelegramLongPollingBot {
                 .chatId(channelId)
                 .text(preText + text)
                 .parseMode("MarkdownV2")
+                .build());
+    }
+
+    private void sendMsg(long chatId, String text) {
+        sendMessage(SendMessage
+                .builder()
+                .chatId(chatId)
+                .text(text)
                 .build());
     }
 
