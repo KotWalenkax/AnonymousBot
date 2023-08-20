@@ -10,21 +10,15 @@ import java.util.List;
 
 public class MessageBuilder {
 
-    private static MessageBuilder INSTANCE;
     private static KeyboardBuilder keyboardBuilder;
 
     private static long adminId;
     private static long channelId;
 
-    public static MessageBuilder getInstance(long admin, long channel) {
-        if (INSTANCE == null) {
+    public MessageBuilder(long admin, long channel) {
             adminId = admin;
             channelId = channel;
-            keyboardBuilder = KeyboardBuilder.getInstance();
-            INSTANCE = new MessageBuilder();
-        }
-
-        return INSTANCE;
+            keyboardBuilder = new KeyboardBuilder();
     }
 
     public SendPhoto sendMsgToAdmin(String text, List<PhotoSize> photoSizeList) {

@@ -22,7 +22,7 @@ public class AnonBot extends TelegramLongPollingBot {
 
         botName = botConfig.getBotName();
 
-        messageBuilder = MessageBuilder.getInstance(botConfig.getAdminId(), botConfig.getChannelId());
+        messageBuilder = new MessageBuilder(botConfig.getAdminId(), botConfig.getChannelId());
         dbConnection = DBConnection.getInstance(botConfig.getUrl(), botConfig.getUser(), botConfig.getPassword());
     }
 

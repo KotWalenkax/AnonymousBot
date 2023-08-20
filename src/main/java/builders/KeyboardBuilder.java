@@ -8,12 +8,6 @@ import java.util.List;
 
 public class KeyboardBuilder {
 
-    private static final KeyboardBuilder INSTANCE = new KeyboardBuilder();
-
-    public static KeyboardBuilder getInstance() {
-        return INSTANCE;
-    }
-
     //start menu keyboard
     public InlineKeyboardMarkup getMainMenuKeyboard() {
         InlineKeyboardMarkup keyboardMarkup = new InlineKeyboardMarkup();
