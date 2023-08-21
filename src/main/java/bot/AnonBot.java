@@ -2,28 +2,28 @@ package bot;
 
 import builders.MessageBuilder;
 import config.BotConfig;
-import database.DBConnection;
 import models.User;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.methods.send.SendPhoto;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
+import service.UserService;
+import service.UserServiceImpl;
 
 public class AnonBot extends TelegramLongPollingBot {
 
-    private final DBConnection dbConnection;
+    private final UserService userService;
     private final MessageBuilder messageBuilder;
 
     private final String botName;
 
     public AnonBot(BotConfig botConfig) {
         super(botConfig.getBotToken());
-
         botName = botConfig.getBotName();
 
         messageBuilder = new MessageBuilder(botConfig.getAdminId(), botConfig.getChannelId());
-        dbConnection = DBConnection.getInstance(botConfig.getUrl(), botConfig.getUser(), botConfig.getPassword());
+        userService = new UserServiceImpl(botConfig.getUrl(), botConfig.getUser(), botConfig.getPassword());
     }
 
     @Override
@@ -33,32 +33,23 @@ public class AnonBot extends TelegramLongPollingBot {
 
     @Override
     public void onUpdateReceived(Update update) {
-        User user;
-
-        if (update.hasMessage()) {
-            user = dbConnection.getUser(update.getMessage().getChatId());
-        } else {
-            user = dbConnection.getUser(update.getCallbackQuery().getMessage().getChatId());
-        }
+        User user = userService.getUserById(update);
 
         switch (user.getUserStatus()) {
             case DEFAULT -> defaultStatus(update, user);
             case ANONYMOUS -> anonymousStatus(update, user);
         }
-
     }
 
     private void defaultStatus(Update update, User user){
 
         if (update.hasMessage()) {
             String mode = update.getMessage().getText();
-
             switch (mode) {
-                case "/start":
-                    user.setUserStatus("ANONYMOUS");
-                    dbConnection.changeUserStatus(user);
+                case "/start" -> {
+                    userService.changeStatus(user, "ANONYMOUS");
                     sendMessage(messageBuilder.sendMainMenu(user.getChatId()));
-                    break;
+                }
             }
         }
 
@@ -67,8 +58,7 @@ public class AnonBot extends TelegramLongPollingBot {
 
             switch (mode) {
                 case "anonymous" -> {
-                    user.setUserStatus("ANONYMOUS");
-                    dbConnection.changeUserStatus(user);
+                    userService.changeStatus(user,  "ANONYMOUS");
                     sendMessage(messageBuilder.sendAnonMsgMenu(user.getChatId()));
                 }
                 case "cancel" -> {
@@ -96,8 +86,7 @@ public class AnonBot extends TelegramLongPollingBot {
     private void anonymousStatus(Update update, User user){
 
         if (update.hasMessage()) {
-            user.setUserStatus("DEFAULT");
-            dbConnection.changeUserStatus(user);
+            userService.changeStatus(user,  "DEFAULT");
             String text = "";
 
             if (update.getMessage().hasText()) {
@@ -105,8 +94,7 @@ public class AnonBot extends TelegramLongPollingBot {
             }
 
             if (text.contains("/start")) {
-                user.setUserStatus("ANONYMOUS");
-                dbConnection.changeUserStatus(user);
+                userService.changeStatus(user,  "ANONYMOUS");
                 sendMessage(messageBuilder.sendAnonMsgMenu(user.getChatId()));
             } else {
 
@@ -125,11 +113,10 @@ public class AnonBot extends TelegramLongPollingBot {
             String mode = update.getCallbackQuery().getData();
 
             switch (mode) {
-                case "cancel":
-                    user.setUserStatus("DEFAULT");
-                    dbConnection.changeUserStatus(user);
+                case "cancel" -> {
+                    userService.changeStatus(user, "DEFAULT");
                     sendMessage(messageBuilder.sendMainMenu(user.getChatId()));
-                    break;
+                }
             }
         }
 

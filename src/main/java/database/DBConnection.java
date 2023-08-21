@@ -50,7 +50,7 @@ public class DBConnection {
                 "user_status VARCHAR(25) NOT NULL)";
 
         try (Connection conn = connect();
-             Statement statement = conn.createStatement();) {
+             Statement statement = conn.createStatement()) {
 
             statement.execute(sql);
         } catch (SQLException e) {
@@ -58,50 +58,20 @@ public class DBConnection {
         }
     }
 
-    public boolean isUserExist(long chatId) {
-        boolean isExist = false;
-        String sql = "SELECT EXISTS(SELECT 1 FROM users WHERE chat_id = ?)";
-
-        try (Connection conn = connect();
-             PreparedStatement statement = conn.prepareStatement(sql);) {
-
-            statement.setLong(1, chatId);
-            try (ResultSet rs = statement.executeQuery();) {
-                if (rs.next()) {
-                    isExist = rs.getBoolean(1);
-                }
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-
-        return isExist;
-    }
-
-    public User getUser(long chatId) {
-        User user;
-
-        if (isUserExist(chatId)) {
-            user = getUser(new User(chatId));
-        } else {
-            user = new User(chatId);
-            createUser(user);
-        }
-
-        return user;
-    }
-
-    public User getUser(User user) {
+    public User getUser(long userId) {
+        User user = new User(userId);
         String sql = "SELECT user_status FROM users WHERE chat_id = ?";
 
         try (Connection conn = connect();
-             PreparedStatement statement = conn.prepareStatement(sql);) {
+             PreparedStatement statement = conn.prepareStatement(sql)) {
 
-            statement.setLong(1, user.getChatId());
+            statement.setLong(1, userId);
 
-            try (ResultSet rs = statement.executeQuery();) {
+            try (ResultSet rs = statement.executeQuery()) {
                 if(rs.next()) {
-                    user.setUserStatus(rs.getString("user_status"));
+                    user.setStatus(rs.getString("user_status"));
+                } else {
+                    createUser(user);
                 }
             }
         } catch (SQLException e) {
@@ -116,7 +86,7 @@ public class DBConnection {
         String sql = "INSERT INTO users(chat_id, user_status) VALUES(?, ?)";
 
         try (Connection conn = connect();
-             PreparedStatement statement = conn.prepareStatement(sql);) {
+             PreparedStatement statement = conn.prepareStatement(sql)) {
 
             statement.setLong(1, user.getChatId());
             statement.setString(2, user.getUserStatus().toString());
@@ -132,7 +102,7 @@ public class DBConnection {
         String sql = "UPDATE users SET user_status = ? WHERE chat_id = ?";
 
         try (Connection conn = connect();
-             PreparedStatement statement = conn.prepareStatement(sql);) {
+             PreparedStatement statement = conn.prepareStatement(sql)) {
 
             statement.setString(1, user.getUserStatus().toString());
             statement.setLong(2, user.getChatId());

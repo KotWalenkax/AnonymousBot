@@ -1,6 +1,5 @@
 package builders;
 
-import database.DBConnection;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.methods.send.SendPhoto;
 import org.telegram.telegrambots.meta.api.objects.InputFile;
@@ -36,7 +35,10 @@ public class MessageBuilder {
     }
 
     public SendPhoto sendMsgToChannel(String text, List<PhotoSize> photoSizeList) {
-        String preText = "*Новый вопрос:* " + "\n\n";
+        String preText = """
+                *Новый вопрос:*\s
+
+                """;
         PhotoSize photoSize = photoSizeList.get(0);
         InputFile inputFile = new InputFile(photoSize.getFileId());
         return SendPhoto
@@ -49,7 +51,10 @@ public class MessageBuilder {
     }
 
     public SendMessage sendMsgToChannel(String text) {
-        String preText = "*Новый вопрос:* " + "\n\n";
+        String preText = """
+                *Новый вопрос:*\s
+
+                """;
         return SendMessage
                 .builder()
                 .chatId(channelId)

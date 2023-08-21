@@ -10,6 +10,11 @@ public class User {
         this.userStatus = Status.DEFAULT;
     }
 
+    private User(long chatId, Status userStatus) {
+        this.chatId = chatId;
+        this.userStatus = userStatus;
+    }
+
     public long getChatId() {
         return chatId;
     }
@@ -18,16 +23,8 @@ public class User {
         return userStatus;
     }
 
-    public void setUserStatus(String userStatus) {
-        switch (userStatus) {
-            case "DEFAULT":
-                this.userStatus = Status.DEFAULT;
-                break;
-
-            case "ANONYMOUS":
-                this.userStatus = Status.ANONYMOUS;
-                break;
-        }
+    public void setStatus(String userStatus) {
+        this.userStatus = Status.valueOf(userStatus);
     }
 
 }
