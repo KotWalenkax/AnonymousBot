@@ -8,8 +8,8 @@ public class UserServiceImpl implements UserService{
 
     private final DBConnection dbConnection;
 
-    public UserServiceImpl(String url, String user, String password) {
-        dbConnection = DBConnection.getInstance(url, user, password);
+    public UserServiceImpl(DBConnection dbConnection) {
+        this.dbConnection = dbConnection;
     }
 
     @Override
@@ -25,8 +25,7 @@ public class UserServiceImpl implements UserService{
     }
 
     @Override
-    public void changeStatus(User user, String status) {
-        user.setStatus(status);
+    public void changeStatus(User user) {
         dbConnection.changeUserStatus(user);
     }
 }

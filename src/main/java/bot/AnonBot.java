@@ -6,6 +6,9 @@ import models.User;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.methods.send.SendPhoto;
+import org.telegram.telegrambots.meta.api.methods.updatingmessages.DeleteMessage;
+import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
+import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import service.UserService;
@@ -17,13 +20,15 @@ public class AnonBot extends TelegramLongPollingBot {
     private final MessageBuilder messageBuilder;
 
     private final String botName;
+    private final Long adminId;
 
-    public AnonBot(BotConfig botConfig) {
+    public AnonBot(BotConfig botConfig, MessageBuilder messageBuilder, UserServiceImpl userService) {
         super(botConfig.getBotToken());
         botName = botConfig.getBotName();
+        adminId = botConfig.getAdminId();
 
-        messageBuilder = new MessageBuilder(botConfig.getAdminId(), botConfig.getChannelId());
-        userService = new UserServiceImpl(botConfig.getUrl(), botConfig.getUser(), botConfig.getPassword());
+        this.messageBuilder = messageBuilder;
+        this.userService = userService;
     }
 
     @Override
@@ -34,95 +39,119 @@ public class AnonBot extends TelegramLongPollingBot {
     @Override
     public void onUpdateReceived(Update update) {
         User user = userService.getUserById(update);
+        System.out.println(update.hasMessage() && update.getMessage().hasPhoto());
 
-        switch (user.getUserStatus()) {
-            case DEFAULT -> defaultStatus(update, user);
-            case ANONYMOUS -> anonymousStatus(update, user);
+        if (user.getChatId() == adminId) {
+            System.out.println("User is admin");
+            handleAdminMessage(update);
+
+        } else if (update.hasMessage() && update.getMessage().hasText()) {
+            if (update.getMessage().getText().contains("/")) {
+                System.out.println("Message contains /");
+                handleCommand(update, user);
+            }
+
+        } else {
+            System.out.println(user.getUserStatus());
+            switch (user.getUserStatus()) {
+                case DEFAULT -> handleDefaultStatus(update, user);
+                case ANONYMOUS -> handleAnonymousStatus(update, user);
+            }
         }
     }
 
-    private void defaultStatus(Update update, User user){
+    public void handleAdminMessage(Update update) {
+        if (update.hasCallbackQuery()) {
+          CallbackQuery cbQuery = update.getCallbackQuery();
+            Message message = cbQuery.getMessage();
 
-        if (update.hasMessage()) {
-            String mode = update.getMessage().getText();
-            switch (mode) {
-                case "/start" -> {
-                    userService.changeStatus(user, "ANONYMOUS");
-                    sendMessage(messageBuilder.sendMainMenu(user.getChatId()));
-                }
-            }
+          switch (cbQuery.getData()) {
+              case "cancel" -> deleteMessage(messageBuilder.getMsgToDelete(message.getChatId(), message.getMessageId()));
+              case "send" -> {
+                  String msgText;
+
+                  if (message.hasPhoto()) {
+                      msgText = message.getCaption() == null ? "" : message.getCaption();
+                      sendMessage(messageBuilder.getMsgToChannel(msgText, message.getPhoto()));
+                  } else {
+                      msgText = message.hasText() ? message.getText() : "";
+                      sendMessage(messageBuilder.getMsgToChannel(msgText));
+                  }
+
+                  deleteMessage(messageBuilder.getMsgToDelete(message.getChatId(), message.getMessageId()));
+              }
+          }
         }
+    }
 
+    public void handleDefaultStatus(Update update, User user){
+        System.out.println("DEFAULT status");
         if (update.hasCallbackQuery()) {
             String mode = update.getCallbackQuery().getData();
 
             switch (mode) {
                 case "anonymous" -> {
-                    userService.changeStatus(user,  "ANONYMOUS");
-                    sendMessage(messageBuilder.sendAnonMsgMenu(user.getChatId()));
-                }
-                case "cancel" -> {
-                    //delete msg, or save, but what is the purpose of saving message, that u don`t send?
-                }
-                case "send" -> {
-                    String msg = "";
-                    if (update.getCallbackQuery().getMessage().hasText()) {
-                        msg = update.getCallbackQuery().getMessage().getText();
-                    }
-                    if (update.getCallbackQuery().getMessage().hasPhoto()) {
-                        msg = update.getCallbackQuery().getMessage().getCaption();
-                        sendMessage(messageBuilder.sendMsgToChannel(msg, update.getCallbackQuery().getMessage().getPhoto()));
-                    } else {
-                        sendMessage(messageBuilder.sendMsgToChannel(msg));
-                    }
-                    sendMessage(messageBuilder.sendMsg(user.getChatId(), "Сообщение отправлено"));
-                    sendMessage(messageBuilder.sendMainMenu(user.getChatId()));
+                    changeStatus(user, "ANONYMOUS");
+                    sendMessage(messageBuilder.getAnonMsgMenu(user.getChatId()));
+                    System.out.println("anon menu msg sent");
                 }
             }
         }
-
     }
 
-    private void anonymousStatus(Update update, User user){
-
+    public void handleAnonymousStatus(Update update, User user){
+        System.out.println("ANONYMOUS STATUS");
         if (update.hasMessage()) {
-            userService.changeStatus(user,  "DEFAULT");
-            String text = "";
+            Message message = update.getMessage();
+            String msgText;
 
-            if (update.getMessage().hasText()) {
-                text = update.getMessage().getText();
-            }
-
-            if (text.contains("/start")) {
-                userService.changeStatus(user,  "ANONYMOUS");
-                sendMessage(messageBuilder.sendAnonMsgMenu(user.getChatId()));
+            if (message.hasPhoto()) {
+                System.out.println("Photo exists");
+                msgText = message.getCaption() == null ? "" : message.getCaption();
+                System.out.println(msgText);
+                sendMessage(messageBuilder.getMsgToAdmin(msgText, message.getPhoto()));
             } else {
-
-                if (update.getMessage().hasPhoto()) {
-                    text = update.getMessage().getCaption();
-                    sendMessage(messageBuilder.sendMsgToAdmin(text, update.getMessage().getPhoto()));
-                } else {
-                    sendMessage(messageBuilder.sendMsgToAdmin(text));
-                }
-                sendMessage(messageBuilder.sendMsg(user.getChatId(), "Сообщение отправлено"));
-                sendMessage(messageBuilder.sendMainMenu(user.getChatId()));
+                System.out.println("Photo doesnt exist");
+                msgText = message.hasText() ? message.getText() : "";
+                System.out.println(msgText);
+                sendMessage(messageBuilder.getMsgToAdmin(msgText));
             }
-        }
+
+            changeStatus(user, "DEFAULT");
+            sendMessage(messageBuilder.getSimpleMsg(user.getChatId(), "Message sent"));
+            sendMessage(messageBuilder.getMainMenu(user.getChatId()));
+            }
 
         if (update.hasCallbackQuery()) {
-            String mode = update.getCallbackQuery().getData();
+            CallbackQuery cbQuery = update.getCallbackQuery();
 
-            switch (mode) {
+            String cbQueryData = cbQuery.getData();
+
+            switch (cbQueryData) {
                 case "cancel" -> {
-                    userService.changeStatus(user, "DEFAULT");
-                    sendMessage(messageBuilder.sendMainMenu(user.getChatId()));
+                    changeStatus(user, "DEFAULT");
+                    sendMessage(messageBuilder.getMainMenu(user.getChatId()));
                 }
             }
         }
-
     }
 
-    private void sendMessage(SendMessage sendMessage) {
+    public void handleCommand(Update update, User user) {
+        Message message = update.getMessage();
+
+        if (message.getText().contains("/start")) {
+            changeStatus(user, "ANONYMOUS");
+            sendMessage(messageBuilder.getAnonMsgMenu(user.getChatId()));
+            System.out.println("anon menu sent");
+        }
+    }
+
+    public void changeStatus(User user, String newStatus) {
+        user.setStatus(newStatus);
+        userService.changeStatus(user);
+    }
+
+    public void sendMessage(SendMessage sendMessage) {
         try {
             execute(sendMessage);
         } catch (TelegramApiException e) {
@@ -130,7 +159,7 @@ public class AnonBot extends TelegramLongPollingBot {
         }
     }
 
-    private void sendMessage(SendPhoto sendPhoto) {
+    public void sendMessage(SendPhoto sendPhoto) {
         try {
             execute(sendPhoto);
         } catch (TelegramApiException e) {
@@ -138,4 +167,11 @@ public class AnonBot extends TelegramLongPollingBot {
         }
     }
 
+    public void deleteMessage(DeleteMessage deleteMessage) {
+        try {
+            execute(deleteMessage);
+        } catch (TelegramApiException e) {
+            e.printStackTrace();
+        }
+    }
 }

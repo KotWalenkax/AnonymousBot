@@ -1,5 +1,6 @@
 package database;
 
+import config.BotConfig;
 import models.User;
 
 import java.sql.*;
@@ -12,11 +13,11 @@ public class DBConnection {
     private static String USER;
     private static String PASSWORD;
 
-    public static DBConnection getInstance(String url, String user, String password) {
+    public static DBConnection getInstance(BotConfig botConfig) {
         if (INSTANCE == null) {
-            DB_URL = url;
-            USER = user;
-            PASSWORD = password;
+            DB_URL = botConfig.getUrl();
+            USER = botConfig.getUser();
+            PASSWORD = botConfig.getPassword();
 
             INSTANCE = new DBConnection();
         }
