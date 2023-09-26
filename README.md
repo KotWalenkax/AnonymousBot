@@ -1,4 +1,4 @@
-# AnonymousBot
+#Telegram bot
 
 Anonymous bot is telegram bot channel. 
 Channel members can send anonymous messages or questions via bot
